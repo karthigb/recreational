@@ -1,12 +1,4 @@
-import datetime
-import getopt
-import os
-import random
-import re
-import sys
-import time
-import urllib.request
-import pdb
+import datetime, getopt, os, random, re, sys, time, urllib.request
 
 class GalleryImageGrabber:
     url = ""
@@ -36,36 +28,30 @@ class GalleryImageGrabber:
         if (self.verboseLevel > 1):
             print(statement)
         self._write(self._constructPath([self.path, "progress"]), statement, "w")
-        if (not(self.currentChap)):
-            self.currentChap = self._setCurrentChap(self._getHtml(self.url))
-        while (self.processedChap < self.numOfChap):
+        while (self.processedChap <= self.numOfChap):
             html = self._getHtml(self.url)
             matched = self._matchPattern(html)
             self._wait()
             if (matched):
                 self.url = self._getNextPage(matched)
-                self._getImage(self._getImageUrl(matched))
-            else:
-                matched = self._matchPatternLastPage(html)
-                if (matched):
-                    self.url = self._getNextPage(matched)
-                    self._getImage(self._getImageUrl(matched))
-                    self.processedChap += 1
-                    self.currentChap = self._getNextChap(matched.group(0))
+                self.maxPage = self._getMaxPage(matched)
+                chapter = self._getCurrentChap(matched)
+                if (self.currentChap != chapter):
+                    self.currentChap = chapter
+                    if (self.processedChap == self.numOfChap):
+                        self.numOfChap -= 1
+                    else:
+                        self.processedChap += 1
                     self.page = 0
-                else:
-                    matched = self._attemptGetLastPage(html)
-                    if (matched):
-                        self._getImage(self._getLastImageUrl(matched))
-                    statement = ("Finished with " + str(self.processedChap) + " chapters obtained, finished at chapter " + str(self.currentChap) + " on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-                    if (self.verboseLevel > 1):
-                        print(statement)
-                    self._write(self._constructPath([self.path, "progress"]), statement, "a")
-                    self.processedChap = self.numOfChap
-
-    def _attemptGetLastPage(self, htmlPage):
-        pat = re.compile('<div.*id\s*=\s*((\"imgholder\")|(\'imgholder\')).*<img.*src\s*=.*((\"http(s)*://\S*/' + str(self.currentChap) + '/\S*\")|(\'http(s)*://\S*/' + str(self.currentChap) + '/\S*\'))+', re.IGNORECASE | re.DOTALL)
-        return pat.search(htmlPage)
+                if (self.processedChap <= self.numOfChap):
+                    self._getImage(self._getImageUrl(matched))
+            else:
+                self.numOfChap = self.processedChap
+                self.processedChap += (1, 0)[self.page != self.maxPage]
+        statement = ("Finished with " + str(self.processedChap) + " fully chapters scanned, finished at chapter " + str(self.currentChap) + " on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        if (self.verboseLevel > 1):
+            print(statement)
+        self._write(self._constructPath([self.path, "progress"]), statement, "a")
 
     def _constructPath(self, listToJoin):
         return os.path.join(*listToJoin)
@@ -77,16 +63,19 @@ class GalleryImageGrabber:
         self._write(self._constructPath([self.path, "progress"]), statement, "a")
 
     def _documentWriteError(self, content, mode):
-        statement = (("Issue saving chapter " + str(self.currentChap) + ", page " + str(self.page)), ("Issue writing the following: \"" + content + "\""))[mode != "wb"]
+        statement = ("Issue saving chapter " + str(self.currentChap) + ", page " + str(self.page), ("Issue writing the following: \"" + content + "\""))[mode != "wb"]
         statement += " on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(statement)
-
+        
     def _documentProgress(self):
         if (self.verboseLevel):
-            statement = ("Got chapter " + str(self.currentChap) + ", page " + str(self.page) + " on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            statement = ("Got chapter " + str(self.currentChap) + ", page " + str(self.page) + ((" of " + self.maxPage), "")[self.maxPage == 0] + " on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             self._write(self._constructPath([self.path, "progress"]), statement, "a")
             if (self.verboseLevel > 2):
                 print(statement)
+
+    def _getCurrentChap(self, matched):
+        return int(matched.group(4))
 
     def _getHtml(self, url):
         return urllib.request.urlopen(url).read().decode('utf-8')
@@ -108,9 +97,9 @@ class GalleryImageGrabber:
 
     def _getImageUrl(self, matched):
         return matched.group(14)[1:-1]
-        
-    def _getLastImageUrl(self, matched):
-        return matched.group(4)[1:-1]
+
+    def _getMaxPage(self, matched):
+        return matched.group(17)
 
     def _getNextPage(self, matched):
         self._setRootSite()
@@ -124,23 +113,14 @@ class GalleryImageGrabber:
     
     def _getNextChap(self, url):
         pat = re.compile("chapter-(.*).html", re.IGNORECASE)
-        return pat.search(y).group(1)
+        return pat.search(url).group(1)
 
     def _makeDir(self, path):
         if (not(os.path.exists(path))):
             os.system("mkdir " + path)
 
     def _matchPattern(self, htmlPage):
-        re.compile("document\s*\[\s*((\'chapterno\')|(\"chapterno\"))\s*\]\s*=\s*(.*?)\s*\;.*?document\s*\[\s*((\'nl\')|(\"nl\"))\s*\]\s*=\s*((\'.*?\')|(\".*?\"))*?\s*\;.*?document\s*\[\s*((\'pu\')|(\"pu\"))\s*\]\s*=\s*((\'.*?\')|(\".*?\"))*?\s*\;.*</select>.*?(\d+)\s*</div>", re.IGNORECASE | re.DOTALL).search(y)
-        return pat.search(htmlPage)
-
-    def _matchPatternLastPage(self, htmlPage):
-        pat = re.compile('<div.*id\s*=\s*((\"imgholder\")|(\'imgholder\')).*<a.*href\s*=\s*((\"/\S*chapter-\w*\.\S*\")|(\'/\S*chapter-\w*\.\S*\')).*<img.*\s*src=\s*((\"http(s)*://\S*/' + str(self.currentChap) + '/\S*\")|(\'http(s)*://\S*/' + str(self.currentChap) + '/\S*\'))', re.IGNORECASE | re.DOTALL)
-        return pat.search(htmlPage)
-
-    def _setCurrentChap(self, htmlPage):
-        pat = re.compile('.*<title>.*read.*\s+(\d+)\s+.*online.*</title>', re.IGNORECASE | re.DOTALL)
-        return int(pat.match(htmlPage).group(1))
+        return re.compile("document\s*\[\s*((\'chapterno\')|(\"chapterno\"))\s*\]\s*=\s*(.*?)\s*\;.*?document\s*\[\s*((\'nl\')|(\"nl\"))\s*\]\s*=\s*((\'.*?\')|(\".*?\"))*?\s*\;.*?document\s*\[\s*((\'pu\')|(\"pu\"))\s*\]\s*=\s*((\'.*?\')|(\".*?\"))*?\s*\;.*</select>.*?(\d+)\s*</div>", re.IGNORECASE | re.DOTALL).search(htmlPage)
         
     def _setRootSite(self):
         pat = re.compile('((http(s?)://)?[^/]*)/?.*', re.IGNORECASE)
