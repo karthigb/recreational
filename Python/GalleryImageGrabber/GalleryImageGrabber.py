@@ -27,7 +27,7 @@ class GalleryImageGrabber:
         statement = ("Started on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         if (self.verboseLevel > 1):
             print(statement)
-        self._write(self._constructPath([self.path, "progress"]), statement, "w")
+        self._write(self._constructPath([self.path, "progress.txt"]), statement, "w")
         while (self.processedChap <= self.numOfChap):
             html = self._getHtml(self.url)
             matched = self._matchPattern(html)
@@ -51,7 +51,7 @@ class GalleryImageGrabber:
         statement = ("Finished with " + str(self.processedChap) + " fully chapters scanned, finished at chapter " + str(self.currentChap) + " on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         if (self.verboseLevel > 1):
             print(statement)
-        self._write(self._constructPath([self.path, "progress"]), statement, "a")
+        self._write(self._constructPath([self.path, "progress.txt"]), statement, "a")
 
     def _constructPath(self, listToJoin):
         return os.path.join(*listToJoin)
@@ -60,7 +60,7 @@ class GalleryImageGrabber:
         statement = ("Issue with chapter " + str(self.currentChap) + ", page " + str(self.page) + " on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         if (self.verboseLevel > 1):
             print(statement)
-        self._write(self._constructPath([self.path, "progress"]), statement, "a")
+        self._write(self._constructPath([self.path, "progress.txt"]), statement, "a")
 
     def _documentWriteError(self, content, mode):
         statement = ("Issue saving chapter " + str(self.currentChap) + ", page " + str(self.page), ("Issue writing the following: \"" + content + "\""))[mode != "wb"]
@@ -70,7 +70,7 @@ class GalleryImageGrabber:
     def _documentProgress(self):
         if (self.verboseLevel):
             statement = ("Got chapter " + str(self.currentChap) + ", page " + str(self.page) + ((" of " + self.maxPage), "")[self.maxPage == 0] + " on " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-            self._write(self._constructPath([self.path, "progress"]), statement, "a")
+            self._write(self._constructPath([self.path, "progress.txt"]), statement, "a")
             if (self.verboseLevel > 2):
                 print(statement)
 
