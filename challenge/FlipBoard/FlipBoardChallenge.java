@@ -162,6 +162,7 @@ public class FlipBoardChallenge {
 					current.end = true;
 					drawRepresentation();
 					System.out.println(showAnswer(current));
+    				System.exit(0);
 				} else {
 					surveyCoordinate(content, current);
 				}
@@ -170,6 +171,8 @@ public class FlipBoardChallenge {
 				System.exit(1);
 			}
 		}
+        System.out.println("Exit was not found");
+        System.exit(0);
 	}
 
 	public static String buildUrl(Coordinate current){
